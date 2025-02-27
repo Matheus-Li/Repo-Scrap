@@ -1,0 +1,20 @@
+{
+    ".py": {
+        "extension": ".py",
+        "count": 3,
+        "lines": 319,
+        "bytes": 121270
+    },
+    ".json": {
+        "extension": ".json",
+        "count": 1,
+        "lines": 14,
+        "bytes": 241
+    },
+    ".md": {
+        "extension": ".md",
+        "count": 1,
+        "lines": 124,
+        "bytes": 66560
+    }
+}
