@@ -1,10 +1,6 @@
-from fileinput import filename
-from time import sleep
-
 from fastapi import FastAPI, HTTPException
 from lxml import html
 import requests
-import os
 import re
 
 
