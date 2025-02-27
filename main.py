@@ -13,54 +13,66 @@ app = FastAPI()
 async def scrap_repo(url: str):
     responseJson = {}
     try:
-        # Faz a requisição HTTP
+        # Make HTTP request
         response = requests.get(url + "/commits")
-        response.raise_for_status()  # Verifica se a requisição foi bem-sucedida
+        response.raise_for_status()  # Check if request was successful
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=400, detail=f"Erro ao acessar a URL: {e}")
 
     tree = html.fromstring(response.content)
 
-    repoHash =  tree.xpath("//*[starts-with(@data-testid, 'commit-group-title')][1]/text()")
+    repoHash = tree.xpath("//*[starts-with(@data-testid, 'commit-group-title')][1]/text()")
     print(f"REPO HASH: {repoHash}")
     repoHash = repoHash[0]
-    urlDir = url.replace("https://github.com/", "")
-    urlDir = urlDir.split("/")
-    directory = urlDir[0] + "/" + urlDir[1]
 
-    # Nome do arquivo JSON
+    # JSON file name
     file_name = f"{repoHash}.json"
 
-    # Caminho completo do arquivo
-    file_path = directory + "/" + file_name
-    print(f'FILE PATH: {file_path}')
+    print(f"URL: {url}")
+
+    # Process URL to create directory
+    urlDir = url.replace("https://github.com/", "")
+    urlDir = urlDir.split("/")
+    directory = "repos/" + urlDir[0] + "/" + urlDir[1]
+
+    # JSON file name
+    file_name = f"{repoHash}.json"
+    file_path = os.path.join(directory, file_name)
+
+    # Create directory if it doesn't exist
+    os.makedirs(directory, exist_ok=True)
+
+    # Check if file already exists
     if os.path.exists(file_path):
-        responseJson = json.load(file_path)
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = file.read()
+        print(f"⚠️ File already exists at: {file_path} (not overwritten)")
+        responseJson = json.loads(content)
         return responseJson
     else:
         try:
-            # Faz a requisição HTTP
+            # Make HTTP request
             response = requests.get(url)
-            response.raise_for_status()  # Verifica se a requisição foi bem-sucedida
+            response.raise_for_status()  # Check if request was successful
         except requests.exceptions.RequestException as e:
             raise HTTPException(status_code=400, detail=f"Erro ao acessar a URL: {e}")
 
         tree = html.fromstring(response.content)
-        # Parseia o conteúdo HTML com lxml
+        # Parse HTML content with lxml
         div_element = tree.xpath("(//div[@data-hpc='true'])[1]")
 
         if div_element:
-            # Buscar todas as <tr>, ignorando a primeira (usando posição > 1)
+            # Find all <tr> elements, skipping the first one (using position > 1)
             tr_list = div_element[0].xpath(".//tbody/tr[position() > 1 and position() < last()]")
 
-            # Iterar sobre cada <tr> (ignorando a primeira)
+            # Iterate over each <tr> (skipping the first)
             for tr in tr_list:
-                # Obter todas as <td> dentro da <tr>
+                # Get all <td> elements within the <tr>
                 td_list = tr.xpath("./td")
 
-                # Procurar SVG e <a> dentro da <tr>
-                svg_class = tr.xpath(".//svg/@class")  # Classe do SVG
-                a_href = tr.xpath(".//a/@href")  # Link do <a>
+                # Search for SVG and <a> inside the <tr>
+                svg_class = tr.xpath(".//svg/@class")  # SVG class
+                a_href = tr.xpath(".//a/@href")  # <a> link
 
                 if a_href[0].startswith("http"):
                     full_url = a_href[0]
@@ -84,28 +96,28 @@ async def scrap_repo(url: str):
 
 def openPath(url: str, responseJson):
     try:
-        # Faz a requisição HTTP
+        # Make HTTP request
         response = requests.get(url)
-        response.raise_for_status()  # Verifica se a requisição foi bem-sucedida
+        response.raise_for_status()  # Check if request was successful
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=400, detail=f"Erro ao acessar a URL: {e}")
 
-    # Parseia o conteúdo HTML com lxml
+    # Parse HTML content with lxml
     tree = html.fromstring(response.content)
 
     div_element = tree.xpath("//table[@aria-labelledby='folders-and-files']")
     if div_element:
-        # Buscar todas as <tr>, ignorando a primeira (usando posição > 1)
+        # Find all <tr> elements, skipping the first one (using position > 1)
         tr_list = div_element[0].xpath(".//tbody/tr[position() > 1 and position() < last()]")
 
-        # Iterar sobre cada <tr> (ignorando a primeira)
+        # Iterate over each <tr> (skipping the first)
         for tr in tr_list:
-            # Obter todas as <td> dentro da <tr>
+            # Get all <td> elements within the <tr>
             td_list = tr.xpath("./td")
 
-            # Procurar SVG e <a> dentro da <tr>
-            svg_class = tr.xpath(".//svg/@class")  # Classe do SVG
-            a_href = tr.xpath(".//a/@href")  # Link do <a>
+            # Search for SVG and <a> inside the <tr>
+            svg_class = tr.xpath(".//svg/@class")  # SVG class
+            a_href = tr.xpath(".//a/@href")  # <a> link
 
             full_url = f"https://github.com{a_href[0]}"
 
@@ -115,23 +127,23 @@ def openPath(url: str, responseJson):
 
             elif "color-fg-muted" in svg_class:
                 print("opening file: " + full_url)
-                scrap_file(full_url,responseJson)
+                scrap_file(full_url, responseJson)
             else:
                 print("non valid type: " + svg_class)
+
 
 def scrap_file(url: str, responseJson):
     fileExtension = getExtension(url)
 
     try:
-        # Faz a requisição HTTP
+        # Make HTTP request
         response = requests.get(url)
-        response.raise_for_status()  # Verifica se a requisição foi bem-sucedida
+        response.raise_for_status()  # Check if request was successful
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=400, detail=f"Erro ao acessar a URL: {e}")
 
-        # Parseia o conteúdo HTML com lxml
+    # Parse HTML content with lxml
     tree = html.fromstring(response.content)
-
 
     fileDetails = tree.xpath("//*[@id='repos-sticky-header']//*/div[contains(@class, 'text-mono')]/*/span/text()")
     if len(fileDetails) == 0:
@@ -145,16 +157,13 @@ def scrap_file(url: str, responseJson):
         with open("output.html", "w", encoding="utf-8") as f:
             f.write(html_string)
 
-
     fileDetails = fileDetails[0]
-    #Gets the line count
+    # Gets the line count
     lineCount = int(re.search(r'\d+', fileDetails).group())
-    #Extract the last number
+    # Extract the last number
     size = int(re.findall(r'\d+', fileDetails)[-1])
-    #Extract the last word
-    unitSize= re.findall(r'\w+', fileDetails)[-1]
-
-
+    # Extract the last word
+    unitSize = re.findall(r'\w+', fileDetails)[-1]
 
     if fileExtension in responseJson:
         extension = responseJson[fileExtension]["extension"]
@@ -201,8 +210,9 @@ def scrap_file(url: str, responseJson):
             print("LAST ACCESSED URL: " + url)
             return
 
-        jsonTypeObj = {"extension":fileExtension,"count":1, "lines":int(lineCount), "bytes":int(bytes)}
+        jsonTypeObj = {"extension": fileExtension, "count": 1, "lines": int(lineCount), "bytes": int(bytes)}
         responseJson[fileExtension] = jsonTypeObj
+
 
 def getExtension(url: str) -> str:
     filename = getFileName(url)
@@ -210,13 +220,15 @@ def getExtension(url: str) -> str:
     print(extension)
     return extension if len(extension) > 1 else "no extension"
     # TODO
-    # VERIFICA A TERMINAÇÃO DO ARQUIVO, QUANTIDADE DE LINHAS E TAMANHO DO ARQUIVO
-    # CASO O TIPO DE ARQUIVO NÃO EXISTA DENTRO DO JSON, CRIAR UM NOVO INDICE DENTRO DO MESMO COM AS INFORMAÇÕES ADQUIRIDAS
-    # CASO EXISTA, SOMAR OS TOTAIS
+    # Check the file ending, line count, and file size
+    # If file type doesn't exist in JSON, create new index with acquired info
+    # If exists, sum totals
 
-    # responseJson = {".py":{"extenssion":".py","count":10, "lines":4000, "bytes":65462},".js":{"extenssion":".js","count":10, "lines":4000, "bytes":65462}}
+    # Example JSON structure
+    # responseJson = {".py":{"extension":".py","count":10, "lines":4000, "bytes":65462},".js":{"extension":".js","count":10, "lines":4000, "bytes":65462}}
 
-def getFileName(url:str):
+
+def getFileName(url: str):
     url = url.replace("https://github.com/", "")
     url = url.replace(".github", "")
     filename = url.split("/", 1)[-1]
@@ -226,25 +238,25 @@ def getFileName(url:str):
 def storeJsonData(url, repoHash, jsonData):
     print(f"URL: {url}")
 
-    # Processa a URL para criar o diretório
+    # Process URL to create directory
     url = url.replace("https://github.com/", "")
     url = url.split("/")
     directory = "repos/" + url[0] + "/" + url[1]
 
-    # Nome do arquivo JSON
+    # JSON file name
     file_name = f"{repoHash}.json"
     file_path = os.path.join(directory, file_name)
 
-    # Cria o diretório se não existir
+    # Create directory if it doesn't exist
     os.makedirs(directory, exist_ok=True)
 
-    # Verifica se o arquivo já existe
+    # Check if file already exists
     if os.path.exists(file_path):
-        print(f"⚠️ Arquivo já existe em: {file_path} (não foi sobrescrito)")
-        return  # Encerra a função sem criar o arquivo
+        print(f"⚠️ File already exists at: {file_path} (not overwritten)")
+        return  # Exit function without creating file
 
-    # Se o arquivo não existe, cria e salva os dados
+    # If file doesn't exist, create and save data
     with open(file_path, "w", encoding="utf-8") as json_file:
         json.dump(jsonData, json_file, indent=4, ensure_ascii=False)
 
-    print(f"✅ Arquivo JSON salvo em: {file_path}")
+    print(f"✅ JSON file saved at: {file_path}")

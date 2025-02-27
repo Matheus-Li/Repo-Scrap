@@ -1,0 +1,38 @@
+{
+    ".settings/org.eclipse.core.resources.prefs": {
+        "extension": ".settings/org.eclipse.core.resources.prefs",
+        "count": 1,
+        "lines": 2,
+        "bytes": 55
+    },
+    ".settings/org.eclipse.jdt.core.prefs": {
+        "extension": ".settings/org.eclipse.jdt.core.prefs",
+        "count": 1,
+        "lines": 14,
+        "bytes": 767
+    },
+    ".csv": {
+        "extension": ".csv",
+        "count": 4,
+        "lines": 38,
+        "bytes": 834
+    },
+    ".java": {
+        "extension": ".java",
+        "count": 9,
+        "lines": 361,
+        "bytes": 209623
+    },
+    ".classpath": {
+        "extension": ".classpath",
+        "count": 1,
+        "lines": 10,
+        "bytes": 386
+    },
+    ".project": {
+        "extension": ".project",
+        "count": 1,
+        "lines": 17,
+        "bytes": 377
+    }
+}
