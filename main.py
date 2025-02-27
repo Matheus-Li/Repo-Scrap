@@ -1,4 +1,5 @@
 from fileinput import filename
+from time import sleep
 
 from fastapi import FastAPI, HTTPException
 from lxml import html
@@ -12,7 +13,7 @@ app = FastAPI()
 
 @app.get("/scrap_repo")
 async def scrap_repo(url: str):
-    responseJson = "{}"
+    responseJson = {}
     try:
         # Faz a requisição HTTP
         response = requests.get(url)
@@ -107,26 +108,85 @@ def scrap_file(url: str, responseJson):
     tree = html.fromstring(response.content)
 
 
-    fileDetails = tree.xpath("(//div[@data-testid='blob-size']/span/text())[1]")
+    fileDetails = tree.xpath("//*[@id='repos-sticky-header']//*/div[contains(@class, 'text-mono')]/*/span/text()")
+    if len(fileDetails) == 0:
+        print("FAILED TO READ FILE: " + getFileName(url))
+        print("LAST ACCESSED URL: " + url)
+        # Convert the tree back to a string (HTML format)
+        html_string = html.tostring(tree, encoding="unicode")
+        return
+
+        # Save the HTML string to a file in the project root directory
+        with open("output.html", "w", encoding="utf-8") as f:
+            f.write(html_string)
+
+
     fileDetails = fileDetails[0]
     #Gets the line count
-    lineCount = re.search(r'\d+', fileDetails).group()
+    lineCount = int(re.search(r'\d+', fileDetails).group())
     #Extract the last number
-    Size = re.findall(r'\d+', fileDetails)[-1]
+    size = int(re.findall(r'\d+', fileDetails)[-1])
     #Extract the last word
     unitSize= re.findall(r'\w+', fileDetails)[-1]
 
 
-def getExtension(text: str) -> str:
-    text = text.replace("https://github.com/", "")
-    text = text.replace(".github", "")
-    text = text.split("/", 1)[-1]
-    extension = "." + text.split(".", 1)[-1]
+
+    if fileExtension in responseJson:
+        extension = responseJson[fileExtension]["extension"]
+        count = responseJson[fileExtension]["count"]
+        lines = responseJson[fileExtension]["lines"]
+        bytes = responseJson[fileExtension]["bytes"]
+
+        if unitSize.lower() == 'bytes':
+            bytes = bytes + size
+        elif unitSize.lower() == 'kb':
+            bytes = bytes + size * 1024
+        elif unitSize.lower() == 'mb':
+            bytes = bytes + size * 1024 * 1024
+        elif unitSize.lower() == 'gb':
+            bytes = bytes + size * 1024 * 1024 * 1024
+        elif unitSize.lower() == 'tb':
+            bytes = bytes + size * 1024 * 1024 * 1024 * 1024
+        else:
+            print("FAILED TO READ FILE SIZE: " + getFileName(url))
+            print("LAST ACCESSED URL: " + url)
+            return
+
+        count = count + 1
+        lines = lines + lineCount
+
+        responseJson[fileExtension]["extension"] = extension
+        responseJson[fileExtension]["count"] = count
+        responseJson[fileExtension]["lines"] = lines
+        responseJson[fileExtension]["bytes"] = bytes
+
+    else:
+        if unitSize.lower() == 'bytes':
+            bytes = size
+        elif unitSize.lower() == 'kb':
+            bytes = size * 1024
+        elif unitSize.lower() == 'mb':
+            bytes = size * 1024 * 1024
+        elif unitSize.lower() == 'gb':
+            bytes = size * 1024 * 1024 * 1024
+        elif unitSize.lower() == 'tb':
+            bytes = size * 1024 * 1024 * 1024 * 1024
+        else:
+            print("FAILED TO READ FILE SIZE: " + getFileName(url))
+            print("LAST ACCESSED URL: " + url)
+            return
+
+        jsonTypeObj = {"extension":fileExtension,"count":1, "lines":int(lineCount), "bytes":int(bytes)}
+        responseJson[fileExtension] = jsonTypeObj
+
+def getExtension(url: str) -> str:
+    filename = getFileName(url)
+    extension = "." + filename.split(".", 1)[-1]
     print(extension)
     return extension if len(extension) > 1 else "no extension"
-    # TODO
-    # VERIFICA A TERMINAÇÃO DO ARQUIVO, QUANTIDADE DE LINHAS E TAMANHO DO ARQUIVO
-    # CASO O TIPO DE ARQUIVO NÃO EXISTA DENTRO DO JSON, CRIAR UM NOVO INDICE DENTRO DO MESMO COM AS INFORMAÇÕES ADQUIRIDAS
-    # CASO EXISTA, SOMAR OS TOTAIS
 
-    # responseJson = {".py":{"extenssion":".py","count":10, "lines":4000, "bytes":65462},".js":{"extenssion":".js","count":10, "lines":4000, "bytes":65462}}
+def getFileName(url:str):
+    url = url.replace("https://github.com/", "")
+    url = url.replace(".github", "")
+    filename = url.split("/", 1)[-1]
+    return filename
